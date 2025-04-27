@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "gametiles.h": "c",
+        "mode0.h": "c",
+        "game.h": "c",
+        "testcollision.h": "c",
+        "sprites.h": "c",
+        "level1collisions.h": "c",
+        "background1.h": "c"
+    }
+}
