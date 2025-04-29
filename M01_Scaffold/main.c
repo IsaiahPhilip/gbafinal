@@ -25,6 +25,8 @@ enum
 
 // random seed
 int rSeed;
+int startselected;
+int pauseselected;
 
 // random prototype
 void srand();
@@ -77,6 +79,8 @@ void initialize() {
 
     buttons = REG_BUTTONS;
     oldButtons = 0;
+    startselected = 0;
+    pauseselected = 0;
 
     initSound();
     mgba_open();
@@ -102,6 +106,14 @@ void goToStart() {
         playSoundA(intromusic_data, intromusic_length, 1);
     }
 
+    if(startselected) {
+        BG_PALETTE[32] = BLACK;
+        BG_PALETTE[33] = WHITE; 
+    } else {
+        BG_PALETTE[32] = WHITE;
+        BG_PALETTE[33] = BLACK;
+    }
+
     state = START;
 
     // begin the seed randomization
@@ -123,11 +135,27 @@ void start() {
     // }
 
     // select to toggle scoreboard
-    if (BUTTON_PRESSED(BUTTON_SELECT)) {
-        goToInstructions();
+    // if (BUTTON_PRESSED(BUTTON_SELECT)) {
+    //     goToInstructions();
+    // }
+    mgba_printf("selected %d", startselected);
+    if (BUTTON_PRESSED(BUTTON_START) || BUTTON_PRESSED(BUTTON_A)) {
+        if(startselected) {
+            goToInstructions();
+        } else {
+            goToGame();
+        }
     }
-    if (BUTTON_PRESSED(BUTTON_START)) {
-        goToGame();
+    if(BUTTON_PRESSED(BUTTON_UP) || BUTTON_PRESSED(BUTTON_DOWN)) {
+        if(startselected) {
+            startselected = 0;
+            BG_PALETTE[32] = WHITE;
+            BG_PALETTE[33] = BLACK;
+        } else {
+            startselected = 1;
+            BG_PALETTE[32] = BLACK;
+            BG_PALETTE[33] = WHITE;
+        }
     }
 }
 
@@ -144,7 +172,7 @@ void goToInstructions() {
 void instructions() {
     waitForVBlank();
 
-    if (BUTTON_PRESSED(BUTTON_SELECT)) {
+    if (BUTTON_PRESSED(BUTTON_START) || BUTTON_PRESSED(BUTTON_A)) {
         goToStart();
     }
 }
@@ -166,13 +194,16 @@ void goToGame() {
     stopSounds();
 
     if(state == PAUSE) {
+        REG_DISPCTL = MODE(0) | BG_ENABLE(2) | BG_ENABLE(3) | SPRITE_ENABLE;
+        REG_BG2CNT = BG_CHARBLOCK(0) | BG_SCREENBLOCK(27) | BG_SIZE_WIDE;
+        REG_BG3CNT = BG_CHARBLOCK(0) | BG_SCREENBLOCK(29) | BG_SIZE_WIDE;
+        
         initMap();
     } else {
         REG_DISPCTL = MODE(0) | BG_ENABLE(2) | BG_ENABLE(3) | SPRITE_ENABLE;
         REG_BG2CNT = BG_CHARBLOCK(0) | BG_SCREENBLOCK(27) | BG_SIZE_WIDE;
         REG_BG3CNT = BG_CHARBLOCK(0) | BG_SCREENBLOCK(29) | BG_SIZE_WIDE;
         
-
         initGame();
         initMap();
         initLevel();
@@ -182,11 +213,24 @@ void goToGame() {
 }
 
 void pause() {
-    if(BUTTON_PRESSED(BUTTON_START)) {
-        goToGame();
+    if (BUTTON_PRESSED(BUTTON_START) || BUTTON_PRESSED(BUTTON_A)) {
+        if(pauseselected) {
+            goToStart();
+        } else {
+            goToGame();
+        }
     }
-    if(BUTTON_PRESSED(BUTTON_SELECT)) {
-        goToStart();
+
+    if(BUTTON_PRESSED(BUTTON_UP) || BUTTON_PRESSED(BUTTON_DOWN)) {
+        if(pauseselected) {
+            pauseselected = 0;
+            BG_PALETTE[32] = WHITE;
+            BG_PALETTE[33] = BLACK;
+        } else {
+            pauseselected = 1;
+            BG_PALETTE[32] = BLACK;
+            BG_PALETTE[33] = WHITE;
+        }
     }
 }
 
@@ -196,9 +240,25 @@ void goToPause() {
     REG_BG2HOFF = 0;
     REG_BG2VOFF = 0;
 
+    if(!(REG_DISPCTL & DISP_BACKBUFFER)) {
+        flipPages();
+    }
+
+    REG_DISPCTL = MODE(4) | BG_ENABLE(2) | DISP_BACKBUFFER;
+
+    drawFullscreenImage4(pauseBitmap);
+    
     waitForVBlank();
-    DMANow(3, shadowOAM, OAM, 128*4);
-    DMANow(3, pauseMap, &SCREENBLOCK[27], pauseLen / 2);
+    flipPages();
+    DMANow(3, pausePal, BG_PALETTE, 256);
+
+    if(pauseselected) {
+        BG_PALETTE[32] = BLACK;
+        BG_PALETTE[33] = WHITE; 
+    } else {
+        BG_PALETTE[32] = WHITE;
+        BG_PALETTE[33] = BLACK;
+    }
 
     state = PAUSE;
 }
@@ -254,11 +314,11 @@ void goToLose() {
 
     REG_DISPCTL = MODE(4) | BG_ENABLE(2) | DISP_BACKBUFFER;
 
-    drawFullscreenImage4(instructionsBitmap);
+    drawFullscreenImage4(loseBitmap);
     
     waitForVBlank();
     flipPages();
-    DMANow(3, instructionsPal, BG_PALETTE, 256);
+    DMANow(3, losePal, BG_PALETTE, 256);
 
     // if(state!=INSTRUCTIONS) {
     //     stopSounds();

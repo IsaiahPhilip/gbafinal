@@ -131,6 +131,8 @@ typedef struct {
   int isAnimating;
   int currentFrame;
   int numFrames;
+  int active;
+  int idleTick;
   int health;
   int beenhit;
   int looking;

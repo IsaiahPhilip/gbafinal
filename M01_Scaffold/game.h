@@ -5,7 +5,9 @@
 #define GRAVITY 80 // How fast things fall
 #define TERMINALVELOCITY 1300 // Fastest possible fall speed
 #define DAMAGEVELOCITY 1000
-#define LASTLEVEL 1
+#define LASTLEVEL 2
+#define TOTALZOMBIES 9
+#define TOTALREAVERS 3
 
 // For 8.8 fixed point encoding
 #define SHIFTUP(n) ((n) << 8)
@@ -36,6 +38,11 @@ void initLevel(); // set initial game logic for level, pretty much everything ex
 void initMap(); // only initialize map, used to decouple w/ game logic for pause handling
 void initNext();
 void updateLevel(); // updates the game logic according to the current level
+void updatePlayer();
+void playerAttack();
+void slashEnemy();
+void updateEnemies();
+void updateZombies();
 void drawLevel();
 void drawUI();
 extern OBJ_ATTR shadowOAM[128];
@@ -43,6 +50,7 @@ extern OBJ_ATTR shadowOAM[128];
 extern PLAYER player;
 extern SPRITE slash;
 extern OBJECT hearts[3];
+extern ENEMY zombies[TOTALZOMBIES];
 
 // extern typedef enum {DOWN, RIGHT, UP, LEFT} DIRECTION;
 

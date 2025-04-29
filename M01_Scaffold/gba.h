@@ -39,6 +39,8 @@ extern volatile unsigned short *videoBuffer;
 // Color
 #define BG_PALETTE ((unsigned short *)0x5000000)
 #define RGB(r, g, b) (((r) & 31) | ((g) & 31) << 5 | ((b) & 31) << 10)
+#define BLACK  RGB(0, 0, 0)
+#define WHITE  RGB(31, 31, 31)
 
 // Checks for collision between two rectangles
 int collision(int x1, int y1, int width1, int height1, int x2, int y2, int width2, int height2);

@@ -2,15 +2,12 @@
 
 #include "sprites.h"
 
-void updateLevel1();
-void updatePlayer1();
-void drawLevel1();
-void drawPlayer();
-void initLevel1();
-void initEnemies1();
-void initZombies1();
-void initPlayer1();
-void initMap1();
+void initLevel2();
+void initMap2();
+void initEnemies2();
+void initZombies2();
+void initPlayer2();
+void updateLevel2Offsets();
 
 #define MAP2WIDTH 256
 #define MAP2HEIGHT 512
