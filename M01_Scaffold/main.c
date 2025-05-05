@@ -9,9 +9,14 @@
 #include "pause.h"
 #include "lose.h"
 #include "win.h"
+#include "win3.h"
 #include "digitalSound.h"
 #include "intromusic.h"
 #include "winscreen2.h"
+#include "bgsound.h"
+#include "winsong2.h"
+#include "winsong1.h"
+#include "losesong1.h"
 
 enum
 {
@@ -103,7 +108,7 @@ void goToStart() {
 
     if(state!=INSTRUCTIONS) {
         stopSounds();
-        playSoundA(intromusic_data, intromusic_length, 1);
+        playSoundB(intromusic_data, intromusic_length, 1);
     }
 
     if(startselected) {
@@ -139,7 +144,7 @@ void start() {
     //     goToInstructions();
     // }
     mgba_printf("selected %d", startselected);
-    if (BUTTON_PRESSED(BUTTON_START) || BUTTON_PRESSED(BUTTON_A)) {
+    if (BUTTON_PRESSED(BUTTON_START) || BUTTON_PRESSED(BUTTON_A) || BUTTON_PRESSED(BUTTON_B)) {
         if(startselected) {
             goToInstructions();
         } else {
@@ -172,7 +177,7 @@ void goToInstructions() {
 void instructions() {
     waitForVBlank();
 
-    if (BUTTON_PRESSED(BUTTON_START) || BUTTON_PRESSED(BUTTON_A)) {
+    if (BUTTON_PRESSED(BUTTON_START) || BUTTON_PRESSED(BUTTON_A) || BUTTON_PRESSED(BUTTON_B)) {
         goToStart();
     }
 }
@@ -191,15 +196,15 @@ void game() {
 }
 
 void goToGame() {
-    stopSounds();
 
     if(state == PAUSE) {
         REG_DISPCTL = MODE(0) | BG_ENABLE(2) | BG_ENABLE(3) | SPRITE_ENABLE;
         REG_BG2CNT = BG_CHARBLOCK(0) | BG_SCREENBLOCK(27) | BG_SIZE_WIDE;
         REG_BG3CNT = BG_CHARBLOCK(0) | BG_SCREENBLOCK(29) | BG_SIZE_WIDE;
-        
         initMap();
     } else {
+        stopSounds();
+        playSoundB(bgsound_data, bgsound_length, 1);
         REG_DISPCTL = MODE(0) | BG_ENABLE(2) | BG_ENABLE(3) | SPRITE_ENABLE;
         REG_BG2CNT = BG_CHARBLOCK(0) | BG_SCREENBLOCK(27) | BG_SIZE_WIDE;
         REG_BG3CNT = BG_CHARBLOCK(0) | BG_SCREENBLOCK(29) | BG_SIZE_WIDE;
@@ -213,7 +218,7 @@ void goToGame() {
 }
 
 void pause() {
-    if (BUTTON_PRESSED(BUTTON_START) || BUTTON_PRESSED(BUTTON_A)) {
+    if (BUTTON_PRESSED(BUTTON_START) || BUTTON_PRESSED(BUTTON_A) || BUTTON_PRESSED(BUTTON_B)) {
         if(pauseselected) {
             goToStart();
         } else {
@@ -221,7 +226,7 @@ void pause() {
         }
     }
 
-    if(BUTTON_PRESSED(BUTTON_UP) || BUTTON_PRESSED(BUTTON_DOWN)) {
+    if(BUTTON_PRESSED(BUTTON_UP) || BUTTON_PRESSED(BUTTON_DOWN) || BUTTON_PRESSED(BUTTON_B)) {
         if(pauseselected) {
             pauseselected = 0;
             BG_PALETTE[32] = WHITE;
@@ -264,28 +269,50 @@ void goToPause() {
 }
 
 void win() {
-    if(BUTTON_PRESSED(BUTTON_START)) {
+    if(BUTTON_PRESSED(BUTTON_START) || BUTTON_PRESSED(BUTTON_A) || BUTTON_PRESSED(BUTTON_B)) {
         goToStart();
     }
 }
 
 void goToWin() {
     hideSprites();
+    stopSounds();
+    if(score > 4) {
+        playSoundB(winsong1_data, winsong1_length, 1);
 
-    REG_BG2HOFF = 0;
-    REG_BG2VOFF = 0;
+        REG_BG2HOFF = 0;
+        REG_BG2VOFF = 0;
 
-    if(!(REG_DISPCTL & DISP_BACKBUFFER)) {
+        if(!(REG_DISPCTL & DISP_BACKBUFFER)) {
+            flipPages();
+        }
+
+        REG_DISPCTL = MODE(4) | BG_ENABLE(2) | DISP_BACKBUFFER;
+
+        drawFullscreenImage4(win3Bitmap);
+        
+        waitForVBlank();
         flipPages();
+        DMANow(3, win3Pal, BG_PALETTE, 256);
+    } else {
+        playSoundB(winsong2_data, winsong2_length, 1);
+
+        REG_BG2HOFF = 0;
+        REG_BG2VOFF = 0;
+
+        if(!(REG_DISPCTL & DISP_BACKBUFFER)) {
+            flipPages();
+        }
+
+        REG_DISPCTL = MODE(4) | BG_ENABLE(2) | DISP_BACKBUFFER;
+
+        drawFullscreenImage4(winscreen2Bitmap);
+        
+        waitForVBlank();
+        flipPages();
+        DMANow(3, winscreen2Pal, BG_PALETTE, 256);
     }
-
-    REG_DISPCTL = MODE(4) | BG_ENABLE(2) | DISP_BACKBUFFER;
-
-    drawFullscreenImage4(winscreen2Bitmap);
     
-    waitForVBlank();
-    flipPages();
-    DMANow(3, winscreen2Pal, BG_PALETTE, 256);
 
     // if(state!=INSTRUCTIONS) {
     //     stopSounds();
@@ -297,13 +324,15 @@ void goToWin() {
 }
 
 void lose() {
-    if(BUTTON_PRESSED(BUTTON_START)) {
+    if(BUTTON_PRESSED(BUTTON_START) || BUTTON_PRESSED(BUTTON_A) || BUTTON_PRESSED(BUTTON_B)) {
         goToStart();
     }
 }
 
 void goToLose() {
     hideSprites();
+    stopSounds();
+    playSoundB(losesong1_data, losesong1_length, 1);
 
     REG_BG2HOFF = 0;
     REG_BG2VOFF = 0;

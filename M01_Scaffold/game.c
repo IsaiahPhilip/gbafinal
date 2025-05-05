@@ -9,6 +9,7 @@
 #include "level2collisions.h"
 #include "level3collisions.h"
 #include "supermonkeysfx.h"
+#include "reaverscream.h"
 #include "superattack.h"
 #include "attack.h"
 #include "hurt.h"
@@ -33,7 +34,7 @@ inline unsigned char colorAt(int x, int y);
 // typedef enum {DOWN, RIGHT, UP, LEFT} DIRECTION;
 
 typedef enum {IDLE, RUNNING, JUMP, FALL, DASH, ATTACK} ANIMATION_STATES;
-typedef enum {DNE, SPAWN, ROAM, DEATH, DEAD} ENEMY_STATE;
+typedef enum {DNE, SPAWN, ROAM, DEATH, DEAD, CHASE} ENEMY_STATE;
 typedef enum {R, L} DIRECTION;
 
 void initGame() {
@@ -60,6 +61,7 @@ void initGame() {
 
     for(int i=0; i<TOTALZOMBIES; i++) { 
         zombies[i].oamIndex = i+1;
+        zombies[i].active = 0;
     }
     
     slash.width = 32;
@@ -71,6 +73,7 @@ void initGame() {
 
     for(int i=0; i<TOTALREAVERS; i++) { 
         reavers[i].oamIndex = i+15;
+        reavers[i].active = 0;
     }
 }
 
@@ -81,6 +84,8 @@ void initMap() {
         initMap1();
     } else if(currentLevel == 2) {
         initMap2();
+    } else if(currentLevel == 3) {
+        initMap3();
     }
 }
 
@@ -89,6 +94,8 @@ void initLevel() {
         initLevel1();
     } else if(currentLevel == 2) {
         initLevel2();
+    } else if(currentLevel == 3) {
+        initLevel3();
     }
 
     hideSprites();
@@ -134,7 +141,7 @@ void updatePlayer() {
         if(player.isCheating) {
             player.isCheating = 0;
         } else {
-            playSoundB(supermonkeysfx_data, supermonkeysfx_length, 0);
+            playSoundA(supermonkeysfx_data, supermonkeysfx_length, 0);
             player.isCheating = 1;
         }
     }
@@ -171,7 +178,7 @@ void updatePlayer() {
     //     player.dashTick = 60;
     // }
     playerAttack();
-    if (BUTTON_PRESSED(BUTTON_UP) && player.grounded) {
+    if ((BUTTON_PRESSED(BUTTON_UP) || BUTTON_PRESSED(BUTTON_A)) && player.grounded) {
         player.state = JUMP;
         player.grounded = 0;
         player.yVel = player.jumpForce;
@@ -255,6 +262,9 @@ void updatePlayer() {
                 for(int i=0; i<3; i++) {
                     zombies[i].beenhit = 0;
                 }
+                for(int i=0; i<TOTALREAVERS; i++) {
+                    reavers[i].beenhit = 0;
+                }
             }
             slash.timeUntilNextFrame = 5;
         }
@@ -265,10 +275,10 @@ void updatePlayer() {
 }
 
 void slashEnemy() {
-    for(int i=0; i<3; i++) {
-        if(zombies[i].state != DEAD && slash.isAnimating && !zombies[i].beenhit && collision(zombies[i].x, zombies[i].y, zombies[i].width, zombies[i].height, slash.x, slash.y, slash.width, slash.height)) {
+    for(int i=0; i<TOTALZOMBIES; i++) {
+        if(zombies[i].active && zombies[i].state != DEAD && slash.isAnimating && !zombies[i].beenhit && collision(zombies[i].x, zombies[i].y, zombies[i].width, zombies[i].height, slash.x, slash.y, slash.width, slash.height)) {
             // mgba_printf("zombie data: %d", zombies[i].state);
-            playSoundB(hurt_data, hurt_length, 0);
+            // playSoundB(hurt_data, hurt_length, 0);
             if(player.isCheating) {
                 zombies[i].health -= 3;
             } else {
@@ -276,6 +286,7 @@ void slashEnemy() {
             }
             zombies[i].beenhit = 1;
             if(zombies[i].health <= 0) {
+                score++;
                 zombies[i].health = 0;
                 // need to access tiles below current x, y pos
                 // then change the tileID to the bloodied version
@@ -317,11 +328,29 @@ void slashEnemy() {
                     SCREENBLOCK[28].tilemap[OFFSET(((zombies[i].x - 256) / 8) + 2, ((zombies[i].y - 256) / 8) + 5, 32)] = TILEMAP_ENTRY_TILEID(45);
                     SCREENBLOCK[28].tilemap[OFFSET(((zombies[i].x - 256) / 8) + 1, ((zombies[i].y - 256) / 8) + 5, 32)] = TILEMAP_ENTRY_TILEID(45);
                 }
-                
+
                 zombies[i].state = DEATH;
                 zombies[i].currentFrame = 0;
                 zombies[i].numFrames = 8;
                 zombies[i].timeUntilNextFrame = 10;
+            }
+        }
+    }
+    for(int i=0; i<TOTALREAVERS; i++) {
+        if(reavers[i].active && reavers[i].state != DEAD && slash.isAnimating && !reavers[i].beenhit && collision(reavers[i].x, reavers[i].y, reavers[i].width, reavers[i].height, slash.x, slash.y, slash.width, slash.height)) {
+            if(player.isCheating) {
+                reavers[i].health -= 3;
+            } else {
+                reavers[i].health--;
+            }
+            reavers[i].beenhit = 1;
+            if(reavers[i].health <= 0) {
+                score++;
+                reavers[i].health = 0;
+                reavers[i].state = DEATH;
+                reavers[i].currentFrame = 0;
+                reavers[i].numFrames = 1;
+                reavers[i].timeUntilNextFrame = 60;
             }
         }
     }
@@ -361,6 +390,7 @@ void playerAttack() {
 
 void updateEnemies() {
     updateZombies();
+    updateReavers();
  }
  
  void updateZombies() {
@@ -374,16 +404,10 @@ void updateEnemies() {
  
      // within DNE we should only check for when player is close enough for spawn to begin
  
-     for(int i=0; i<3; i++) {
+     for(int i=0; i<TOTALZOMBIES; i++) {
         if(zombies[i].active) {
             if(zombies[i].state == DNE) {
                 if(zombies[i].x - 100 < player.x) {
-                    // the frame variables for spawn should also be set here
-                    // isAnimating should be set to 1 and stay at one until the animation is over
-                    // numFrames should be set to 8
-                    // timeBetweenFrames should be set to 10
-                    // in the animation handler, rather that using modulo to loop, 
-                    //     once currentFrame == numFrames we should switch to the roam state
                     zombies[i].state = SPAWN;
                     zombies[i].isAnimating = 1;
                     zombies[i].numFrames = 8;
@@ -422,13 +446,6 @@ void updateEnemies() {
                     }
                 }
             }
-    
-            // need to handle death state
-            // once the death state is triggered the animation should play and once the animation completes we will hide the zombie
-        
-            // different types of animation handling needed:
-            // looping, loops indefiniteley, we have this working
-            // finite, ends in a single run through, need to add this functionality
         
             if(zombies[i].state == SPAWN) {
                 // mgba_printf("state!!!!");
@@ -466,6 +483,95 @@ void updateEnemies() {
      }
  }
 
+ void updateReavers() {
+    // states: roam, chase, death, dead
+    for(int i=0; i<TOTALREAVERS; i++) {
+        if(reavers[i].active) {
+            if(reavers[i].state == ROAM) {
+                if(!reavers[i].idleTick) {
+                    if(reavers[i].looking == L) {
+                        reavers[i].x--;
+                        if(reavers[i].x < reavers[i].leftBarrier) {
+                            // zombies[i].looking = R;
+                            reavers[i].idleTick = 100;
+                            reavers[i].isAnimating = 0;
+                        }
+                    } else {
+                        reavers[i].x++;
+                        if(reavers[i].x > reavers[i].rightBarrier) {
+                            // zombies[i].looking = L;
+                            reavers[i].idleTick = 100;
+                            reavers[i].isAnimating = 0;
+                        }
+                    }
+                } else {
+                    reavers[i].idleTick--;
+                    if(!reavers[i].idleTick) {
+                        reavers[i].isAnimating = 1;
+                        if(reavers[i].looking) {
+                            reavers[i].looking = 0;
+                        } else {
+                            reavers[i].looking = 1;
+                        }
+                    }
+                }
+                if(reavers[i].y - SHIFTDOWN(player.y) < 10 && abs(reavers[i].x - player.x) < 100) {
+                    reavers[i].state = CHASE;
+                    reavers[i].speedTick = 50;
+                    playSoundB(reaverscream_data, reaverscream_length, 0);
+                }
+            }
+
+            if(reavers[i].state == CHASE) {
+                int xDist = (reavers[i].x+32) - player.x;
+                reavers[i].speedTick--;
+                if(reavers[i].speedTick == 0) {
+                    reavers[i].speedTick = 20;
+                    if(xDist < 0) { // reaver is to the right of player
+                        reavers[i].xVel++;
+                    } else {
+                        reavers[i].xVel--;
+                    }
+                }
+
+                reavers[i].xVel = CLAMP(reavers[i].xVel, -3, 3);
+                reavers[i].x = CLAMP(reavers[i].xVel + reavers[i].x, reavers[i].leftBarrier, reavers[i].rightBarrier);
+                if(reavers[i].xVel > 0) {
+                    reavers[i].looking = 0;
+                } else {
+                    reavers[i].looking = 1;
+                }
+
+            }
+
+            mgba_printf("reaver state %d", reavers[i].state);
+        
+            if(reavers[i].state == DEATH) {
+                --reavers[i].timeUntilNextFrame;
+                if(reavers[i].timeUntilNextFrame == 0) {
+                    reavers[i].currentFrame++;
+                    if(reavers[i].currentFrame >= reavers[i].numFrames - 1) {
+                        reavers[i].state = DEAD;
+                        shadowOAM[reavers[i].oamIndex].attr0 = ATTR0_HIDE;
+                    }
+                    reavers[i].timeUntilNextFrame = 10;
+                }
+            } else {
+                if(reavers[i].isAnimating) {
+                    --reavers[i].timeUntilNextFrame;
+                    if(reavers[i].timeUntilNextFrame == 0) {
+                        reavers[i].currentFrame = ((reavers[i].currentFrame + 1)) % (reavers[i].numFrames);
+                        reavers[i].timeUntilNextFrame = 15;
+                    }
+                } else {
+                    reavers[i].currentFrame = 0;
+                    reavers[i].timeUntilNextFrame = 10;
+                }
+            }
+        }
+     }
+ }
+
  void levelDamage() {
     if(colorAt(player.x + 8, SHIFTDOWN(player.y) + 8) == 4) {
         if(!player.invincibleTick) {
@@ -480,9 +586,9 @@ void updateEnemies() {
  void enemyDamage() {
     // if the player collides with enemy the player should flash red to indicate taking damage, then white to indicate short invincibility.
     if(player.invincibleTick == 0) {
-        for(int i=0; i<3; i++) {
+        for(int i=0; i<TOTALZOMBIES; i++) {
             if(zombies[i].active && zombies[i].state != DEATH && zombies[i].state != DEAD) {
-                mgba_printf("zombie number %d", i);
+                // mgba_printf("zombie number %d", i);
                 // play player damaged sound
                 if(zombies[i].looking == L) {
                     if(player.invincibleTick == 0 && collision(zombies[i].x, zombies[i].y, zombies[i].width, zombies[i].height, player.x, SHIFTDOWN(player.y), player.width, player.height)) {
@@ -493,6 +599,26 @@ void updateEnemies() {
                     }
                 } else {
                     if(player.invincibleTick == 0 && collision(zombies[i].x + 8, zombies[i].y, zombies[i].width, zombies[i].height, player.x, SHIFTDOWN(player.y), player.width, player.height)) {
+                        player.health--;
+                        player.invincibleTick = 30;
+                        shadowOAM[hearts[player.health].oamIndex].attr0 |= ATTR0_HIDE;
+                        hearts[player.health].active = 0;
+                    }
+                }
+            }
+        }
+        for(int i=0; i<TOTALREAVERS; i++) {
+            if(reavers[i].active && reavers[i].state != DEATH && reavers[i].state != DEAD) {
+                // play player damaged sound
+                if(zombies[i].looking == L) {
+                    if(player.invincibleTick == 0 && collision(reavers[i].x, reavers[i].y, reavers[i].width, reavers[i].height, player.x, SHIFTDOWN(player.y), player.width, player.height)) {
+                        player.health--;
+                        player.invincibleTick = 30;
+                        shadowOAM[hearts[player.health].oamIndex].attr0 |= ATTR0_HIDE;
+                        hearts[player.health].active = 0;
+                    }
+                } else {
+                    if(player.invincibleTick == 0 && collision(reavers[i].x + 8, reavers[i].y, reavers[i].width, reavers[i].height, player.x, SHIFTDOWN(player.y), player.width, player.height)) {
                         player.health--;
                         player.invincibleTick = 30;
                         shadowOAM[hearts[player.health].oamIndex].attr0 |= ATTR0_HIDE;
@@ -517,6 +643,8 @@ void updateLevel() {
         updateLevel1Offsets();
     } else if(currentLevel == 2) {
         updateLevel2Offsets();
+    } else if(currentLevel==3) {
+        updateLevel3Offsets();
     }
 }
 
@@ -605,11 +733,15 @@ void drawPlayer() {
 drawEnemies() {
     for(int i=0; i<TOTALZOMBIES; i++) {
         if(zombies[i].active && zombies[i].state != DEAD) {
-            mgba_printf("enemy: %d, current: %d, state: %d", i+1, zombies[i].currentFrame, zombies[i].state);
-            mgba_printf("enemy position: %d, %d", zombies[i].x, zombies[i].y);
+            // mgba_printf("enemy: %d, current: %d, state: %d", i+1, zombies[i].currentFrame, zombies[i].state);
+            // mgba_printf("enemy position: %d, %d", zombies[i].x, zombies[i].y);
             int y_diff = zombies[i].y - vOff;
-
-            shadowOAM[zombies[i].oamIndex].attr0 = ATTR0_Y(zombies[i].y - vOff) | ATTR0_SQUARE | (y_diff > 160 || y_diff < 32 ? ATTR0_HIDE : ATTR0_REGULAR);
+            if(currentLevel == 2) {
+                shadowOAM[zombies[i].oamIndex].attr0 = ATTR0_Y(zombies[i].y - vOff) | ATTR0_SQUARE | (y_diff > 160 || y_diff < 32 ? ATTR0_HIDE : ATTR0_REGULAR);
+            } else {
+                shadowOAM[zombies[i].oamIndex].attr0 = ATTR0_Y(zombies[i].y - vOff) | ATTR0_SQUARE;
+            }
+            
             shadowOAM[zombies[i].oamIndex].attr1 = ATTR1_X(zombies[i].x - hOff) | ATTR1_MEDIUM;
 
             if(zombies[i].state == DNE) {
@@ -623,6 +755,35 @@ drawEnemies() {
             }
             if(!zombies[i].looking) {
                 shadowOAM[zombies[i].oamIndex].attr1 |= ATTR1_HFLIP; 
+            } 
+        }
+    }
+    for(int i=0; i<TOTALREAVERS; i++) {
+        if(reavers[i].active && reavers[i].state != DEAD) {
+            // mgba_printf("active reaver x: %d", reavers[i].x);
+            int y_diff = reavers[i].y - vOff;
+            shadowOAM[reavers[i].oamIndex].attr0 = ATTR0_Y(reavers[i].y - vOff) | ATTR0_WIDE | (y_diff > 160 || y_diff < 32 ? ATTR0_HIDE : ATTR0_REGULAR);
+            shadowOAM[reavers[i].oamIndex].attr1 = ATTR1_X(reavers[i].x - hOff) | ATTR1_LARGE;
+            if(reavers[i].state == SPAWN || reavers[i].state == ROAM || reavers[i].state == CHASE) {
+                if(reavers[i].currentFrame < 4) {
+                    if(reavers[i].beenhit) {
+                        shadowOAM[reavers[i].oamIndex].attr2 = ATTR2_PALROW(2) | ATTR2_TILEID(reavers[i].currentFrame * 8, 12);
+                    } else {
+                        shadowOAM[reavers[i].oamIndex].attr2 = ATTR2_PALROW(0) | ATTR2_TILEID(reavers[i].currentFrame * 8, 12);
+                    }
+                } else {
+                    if(reavers[i].beenhit) {
+                        shadowOAM[reavers[i].oamIndex].attr2 = ATTR2_PALROW(2) | ATTR2_TILEID((reavers[i].currentFrame - 4) * 8, 16);
+                    } else {
+                        shadowOAM[reavers[i].oamIndex].attr2 = ATTR2_PALROW(0) | ATTR2_TILEID((reavers[i].currentFrame - 4) * 8, 16);
+                    }
+                }
+            }
+            if(reavers[i].state == DEATH) {
+                shadowOAM[reavers[i].oamIndex].attr2 = ATTR2_PALROW(0) | ATTR2_TILEID(24, 16);
+            }
+            if(!reavers[i].looking) {
+                shadowOAM[reavers[i].oamIndex].attr1 |= ATTR1_HFLIP; 
             } 
         }
     }

@@ -72,7 +72,7 @@ void updateLevel2Offsets() {
 
 void initPlayer2() {
     mgba_printf("initial y: %d", player.y);
-    player.x = 32;
+    player.x = 9;
     player.y = SHIFTUP(48);
     player.yVel = SHIFTUP(0);
     player.width = 16;

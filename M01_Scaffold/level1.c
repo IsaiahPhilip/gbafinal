@@ -14,6 +14,7 @@
 #include "superattack.h"
 #include "level1collisions.h"
 #include "map1.h"
+#include "bgsound.h"
 
 typedef enum {IDLE, RUNNING, JUMP, FALL, DASH, ATTACK} ANIMATION_STATES;
 typedef enum {DNE, SPAWN, ROAM, DEATH, DEAD} ENEMY_STATE;

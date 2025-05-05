@@ -138,6 +138,7 @@ typedef struct {
   int looking;
   int leftBarrier;
   int rightBarrier;
+  int speedTick;
   u8 oamIndex; 
 } ENEMY;
 

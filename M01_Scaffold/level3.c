@@ -58,21 +58,20 @@ void updateLevel3Offsets() {
     if(hOff == 0) {
         bghOff = 0;
     } else if(hOff == MAP3WIDTH - SCREENWIDTH) {
-        // mgba_printf("hOff:%d", hOff);
-        // mgba_printf("bghOff:%d", bghOff);
         bghOff = (MAP3WIDTH - SCREENWIDTH) / 2;
     }
-    if(vOff == 0) {
-        bgvOff = 0;
-    } else if(vOff == MAP3HEIGHT - SCREENHEIGHT) {
+
+    if(vOff == MAP3HEIGHT - SCREENHEIGHT) {
         bgvOff = (MAP3HEIGHT - SCREENHEIGHT) / 2;
+    } else if(vOff == 0) {
+        bgvOff = 0;
     }
 }
 
 void initPlayer3() {
     mgba_printf("initial y: %d", player.y);
-    player.x = 0;
-    player.y = SHIFTUP(28*4);
+    player.x = 9;
+    player.y = SHIFTUP(208);
     player.yVel = SHIFTUP(0);
     player.width = 16;
     player.height = 16;
@@ -89,11 +88,38 @@ void initPlayer3() {
 
 void initEnemies3() {
     initZombies3();
+    initReavers3();
 }
 
 // for zombies idle state represents
 void initZombies3() {
     for(int i=0; i<3; i++) {
         zombies[i].active = 0;
+    }
+}
+
+void initReavers3() {
+    for(int i=0; i<3; i++) {
+        if(i<1) {
+            reavers[i].health = 10;
+            reavers[i].numFrames = 7;
+            reavers[i].currentFrame = 0;
+            reavers[i].state = ROAM;
+            reavers[i].looking = L;
+            reavers[i].timeUntilNextFrame = 10;
+            reavers[i].width = 50;
+            reavers[i].height = 24;
+            reavers[i].idleTick = 0;
+            reavers[i].beenhit = 0;
+            reavers[i].active = 1;
+            reavers[i].isAnimating = 1;
+        } else {
+            reavers[i].active = 0;
+        }
+
+        reavers[0].x = 300;
+        reavers[0].y = 208;
+        reavers[0].rightBarrier = 426;
+        reavers[0].leftBarrier = 20;
     }
 }

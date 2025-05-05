@@ -5,7 +5,7 @@
 #define GRAVITY 80 // How fast things fall
 #define TERMINALVELOCITY 1300 // Fastest possible fall speed
 #define DAMAGEVELOCITY 1000
-#define LASTLEVEL 2
+#define LASTLEVEL 3
 #define TOTALZOMBIES 9
 #define TOTALREAVERS 3
 
@@ -51,6 +51,7 @@ extern PLAYER player;
 extern SPRITE slash;
 extern OBJECT hearts[3];
 extern ENEMY zombies[TOTALZOMBIES];
+extern ENEMY reavers[TOTALREAVERS];
 
 // extern typedef enum {DOWN, RIGHT, UP, LEFT} DIRECTION;
 
