@@ -420,14 +420,18 @@ void updateEnemies() {
             } else if(zombies[i].state == ROAM) {
                 if(!zombies[i].idleTick) {
                     if(zombies[i].looking == L) {
-                        zombies[i].x--;
+                        if(!zombies[i].beenhit) {
+                            zombies[i].x--;
+                        }
                         if(zombies[i].x < zombies[i].leftBarrier) {
                             // zombies[i].looking = R;
                             zombies[i].idleTick = 100;
                             zombies[i].isAnimating = 0;
                         }
                     } else {
-                        zombies[i].x++;
+                        if(!zombies[i].beenhit) {
+                            zombies[i].x++;
+                        }
                         if(zombies[i].x > zombies[i].rightBarrier) {
                             // zombies[i].looking = L;
                             zombies[i].idleTick = 100;
@@ -748,6 +752,7 @@ drawEnemies() {
                 shadowOAM[zombies[i].oamIndex].attr2 = ATTR2_PALROW(0) | ATTR2_TILEID(0, 20);
             } else if(zombies[i].state == SPAWN || zombies[i].state == ROAM || zombies[i].state == DEATH) {
                 if(zombies[i].beenhit) {
+                    
                     shadowOAM[zombies[i].oamIndex].attr2 = ATTR2_PALROW(2) | ATTR2_TILEID(zombies[i].currentFrame * 4, 20 + ((zombies[i].state - 1)*4));
                 } else {
                     shadowOAM[zombies[i].oamIndex].attr2 = ATTR2_PALROW(0) | ATTR2_TILEID(zombies[i].currentFrame * 4, 20 + ((zombies[i].state - 1)*4));
